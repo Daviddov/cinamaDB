@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, Calendar, Heart, Play, Info } from 'lucide-react';
 import { Link } from 'react-router-dom';
-
+import TrailerModal from './TrailerModal';
 
 // Movie Card Component
 const MovieCard = ({ movie, index, onToggleFavorite, isFavorite }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [showTrailer, setShowTrailer] = useState(false);
 
   const formatDate = (dateString) => {
     if (!dateString) return 'לא ידוע';
@@ -20,16 +21,35 @@ const MovieCard = ({ movie, index, onToggleFavorite, isFavorite }) => {
 
   const placeholderImage = 'https://via.placeholder.com/500x750/1a1a1a/666666?text=No+Image';
 
+  const handleTrailerClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // בדיקה אם יש כבר מודאל פתוח
+    const existingModals = document.querySelectorAll('.trailer-overlay');
+    if (existingModals.length > 0) {
+      return; // לא לפתוח מודאל חדש אם יש כבר אחד פתוח
+    }
+    
+    setShowTrailer(true);
+  };
+
+  const handleFavoriteClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onToggleFavorite && onToggleFavorite(movie);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 50, scale: 0.9 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ 
-        duration: 0.6, 
+      transition={{
+        duration: 0.6,
         delay: index * 0.1,
         ease: [0.04, 0.62, 0.23, 0.98]
       }}
-      whileHover={{ y: -10, scale: 1.02 }}
+      whileHover={{ y: -10 }} // הסרנו את ה-scale מכאן
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       style={{ width: '100%', cursor: 'pointer' }}
@@ -48,7 +68,7 @@ const MovieCard = ({ movie, index, onToggleFavorite, isFavorite }) => {
       }}>
         {/* Movie Poster */}
         <div style={{ position: 'relative', width: '100%', height: '400px', overflow: 'hidden' }}>
-          <img
+          <motion.img
             src={movie.poster_path || placeholderImage}
             alt={movie.title}
             style={{
@@ -56,15 +76,18 @@ const MovieCard = ({ movie, index, onToggleFavorite, isFavorite }) => {
               height: '100%',
               objectFit: 'cover',
               transition: 'var(--transition)',
-              opacity: imageLoaded ? 1 : 0,
-              transform: isHovered ? 'scale(1.05)' : 'scale(1)'
+              opacity: imageLoaded ? 1 : 0
             }}
+            animate={{
+              scale: isHovered ? 1.05 : 1 // רק התמונה תגדל, לא כל הקארד
+            }}
+            transition={{ duration: 0.3 }}
             onLoad={() => setImageLoaded(true)}
             onError={e => {
               e.target.src = placeholderImage;
             }}
           />
-          
+
           {/* Rating Badge */}
           <div style={{
             position: 'absolute',
@@ -78,73 +101,85 @@ const MovieCard = ({ movie, index, onToggleFavorite, isFavorite }) => {
             alignItems: 'center',
             gap: '0.25rem',
             fontSize: '0.9rem',
-            fontWeight: '600'
+            fontWeight: '600',
+            zIndex: 2
           }}>
             <Star size={14} fill="currentColor" />
             <span>{formatRating(movie.vote_average)}</span>
           </div>
 
           {/* Overlay with actions */}
-          {isHovered && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              style={{
-                position: 'absolute',
-                inset: 0,
-                background: 'linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.4) 50%, transparent 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <motion.button
-                  style={{
-                    width: '48px',
-                    height: '48px',
-                    borderRadius: '50%',
-                    border: 'none',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: 'var(--primary-color)',
-                    color: '#000'
-                  }}
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                >
-                  <Play size={20} fill="currentColor" />
-                </motion.button>
-                
-                <motion.button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onToggleFavorite && onToggleFavorite(movie);
-                  }}
-                  style={{
-                    width: '48px',
-                    height: '48px',
-                    borderRadius: '50%',
-                    border: 'none',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: isFavorite ? '#e91e63' : 'rgba(0, 0, 0, 0.7)',
-                    color: 'white'
-                  }}
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                >
-                  <Heart size={18} fill={isFavorite ? 'currentColor' : 'none'} />
-                </motion.button>
-              </div>
-            </motion.div>
-          )}
+          <AnimatePresence>
+            {isHovered && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.4) 50%, transparent 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 3
+                }}
+              >
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  <motion.button
+                    onClick={handleTrailerClick}
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: 'var(--primary-color)',
+                      color: '#000',
+                      position: 'relative',
+                      zIndex: 4
+                    }}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.1 }}
+                  >
+                    <Play size={20} fill="currentColor" />
+                  </motion.button>
+
+                  <motion.button
+                    onClick={handleFavoriteClick}
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: isFavorite ? '#e91e63' : 'rgba(0, 0, 0, 0.7)',
+                      color: 'white',
+                      position: 'relative',
+                      zIndex: 4
+                    }}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <Heart size={18} fill={isFavorite ? 'currentColor' : 'none'} />
+                  </motion.button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Movie Info */}
@@ -162,7 +197,7 @@ const MovieCard = ({ movie, index, onToggleFavorite, isFavorite }) => {
           }}>
             {movie.title}
           </h3>
-          
+
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -175,7 +210,7 @@ const MovieCard = ({ movie, index, onToggleFavorite, isFavorite }) => {
               <Calendar size={14} />
               <span>{formatDate(movie.release_date)}</span>
             </div>
-            
+
             {movie.vote_count && (
               <div style={{ fontSize: '0.8rem' }}>
                 {movie.vote_count.toLocaleString()} דירוגים
@@ -184,9 +219,10 @@ const MovieCard = ({ movie, index, onToggleFavorite, isFavorite }) => {
           </div>
 
           {movie.overview && isHovered && (
-            <motion.p 
+            <motion.p
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.3 }}
               style={{
                 fontSize: '0.9rem',
@@ -196,19 +232,24 @@ const MovieCard = ({ movie, index, onToggleFavorite, isFavorite }) => {
                 overflow: 'hidden'
               }}
             >
-              {movie.overview.length > 100 
-                ? `${movie.overview.substring(0, 100)}...` 
+              {movie.overview.length > 100
+                ? `${movie.overview.substring(0, 100)}...`
                 : movie.overview
               }
             </motion.p>
           )}
 
-          <Link to={`/movie/${movie.id}`} style={{ marginTop: 'auto' }}>
+          <Link to={`/movie/${movie.id}`} style={{ marginTop: 'auto', textDecoration: 'none' }}>
             <motion.button
               className="btn btn-outline"
-              style={{ width: '100%', justifyContent: 'center', padding: '0.75rem', fontSize: '0.9rem' }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              style={{ 
+                width: '100%', 
+                justifyContent: 'center', 
+                padding: '0.75rem', 
+                fontSize: '0.9rem'
+              }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
               <Info size={16} />
               פרטים נוספים
@@ -216,6 +257,14 @@ const MovieCard = ({ movie, index, onToggleFavorite, isFavorite }) => {
           </Link>
         </div>
       </div>
+
+      {/* Trailer Modal */}
+      <TrailerModal
+        movieId={movie.id}
+        movieTitle={movie.title}
+
+        onClose={() => setShowTrailer(false)}
+      />
     </motion.div>
   );
 };

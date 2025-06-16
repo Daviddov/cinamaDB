@@ -1,23 +1,22 @@
-
-
 // src/pages/MovieDetailPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  ArrowLeft, 
-  Star, 
-  Calendar, 
-  Clock, 
-  Globe, 
-  DollarSign, 
-  Heart, 
-  Play, 
+import {
+  ArrowLeft,
+  Star,
+  Calendar,
+  Clock,
+  Globe,
+  DollarSign,
+  Heart,
+  Play,
   Share2,
   User,
   Film
 } from 'lucide-react';
 import { tmdbService } from '../services/tmdbApi';
+import TrailerGallery from '../components/movies/TrailerGallery';
 
 
 const MovieDetailPage = () => {
@@ -27,16 +26,18 @@ const MovieDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'trailers', 'cast'
+  const [showTrailerGallery, setShowTrailerGallery] = useState(false);
 
   useEffect(() => {
     const fetchMovieDetails = async () => {
       setLoading(true);
       setError(null);
-      
+
       try {
         const movieData = await tmdbService.getMovieDetails(id);
         setMovie(movieData);
-        
+
         // בדיקה אם הסרט במועדפים
         const favorites = JSON.parse(localStorage.getItem('movieFavorites') || '[]');
         setIsFavorite(favorites.some(fav => fav.id === parseInt(id)));
@@ -52,10 +53,22 @@ const MovieDetailPage = () => {
       fetchMovieDetails();
     }
   }, [id]);
+  useEffect(() => {
+    if (activeTab === 'trailers') {
+      setShowTrailerGallery(true);
+    }
+  }, [activeTab]);
 
+  // או לחלופין, שנה את הטיפול בלחיצה על הכרטיסייה:
+  const handleTabClick = (tabId) => {
+    setActiveTab(tabId);
+    if (tabId === 'trailers') {
+      setShowTrailerGallery(true);
+    }
+  };
   const handleToggleFavorite = () => {
     const favorites = JSON.parse(localStorage.getItem('movieFavorites') || '[]');
-    
+
     if (isFavorite) {
       // הסרה מהמועדפים
       const updatedFavorites = favorites.filter(fav => fav.id !== movie.id);
@@ -85,6 +98,24 @@ const MovieDetailPage = () => {
     return `${hours}:${mins.toString().padStart(2, '0')} שעות`;
   };
 
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: movie.title,
+          text: movie.overview,
+          url: window.location.href
+        });
+      } catch (err) {
+        console.log('Error sharing:', err);
+      }
+    } else {
+      // Fallback - copy to clipboard
+      navigator.clipboard.writeText(window.location.href);
+      alert('הקישור הועתק ללוח');
+    }
+  };
+
   if (loading) {
     return (
       <div className="container" style={{ padding: '4rem 1rem', textAlign: 'center' }}>
@@ -111,14 +142,14 @@ const MovieDetailPage = () => {
   }
 
   return (
-    <motion.div 
+    <motion.div
       className="movie-detail-page"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.6 }}
     >
       {/* Hero Section with Backdrop */}
-      <div 
+      <div
         className="movie-hero"
         style={{
           backgroundImage: movie.backdrop_path ? `url(${movie.backdrop_path})` : 'none',
@@ -128,14 +159,14 @@ const MovieDetailPage = () => {
           minHeight: '500px',
         }}
       >
-        <div 
+        <div
           style={{
             position: 'absolute',
             inset: 0,
             background: 'linear-gradient(to top, var(--bg-color), transparent 50%, var(--bg-color))',
           }}
         />
-        
+
         <div className="container" style={{ position: 'relative', zIndex: 1, padding: '2rem 1rem' }}>
           {/* Back Button */}
           <motion.div
@@ -151,7 +182,12 @@ const MovieDetailPage = () => {
           </motion.div>
 
           {/* Movie Info */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '2rem', alignItems: 'start' }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'auto 1fr',
+            gap: '2rem',
+            alignItems: 'start'
+          }}>
             {/* Poster */}
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
@@ -180,7 +216,7 @@ const MovieDetailPage = () => {
               <h1 style={{ fontSize: '3rem', marginBottom: '0.5rem' }} className="gradient-text">
                 {movie.title}
               </h1>
-              
+
               {movie.original_title && movie.original_title !== movie.title && (
                 <h2 style={{ fontSize: '1.5rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
                   {movie.original_title}
@@ -242,6 +278,7 @@ const MovieDetailPage = () => {
               {/* Action Buttons */}
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                 <motion.button
+                  onClick={() => setShowTrailerGallery(true)}
                   className="btn btn-primary"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -266,6 +303,7 @@ const MovieDetailPage = () => {
                 </motion.button>
 
                 <motion.button
+                  onClick={handleShare}
                   className="btn btn-outline"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -279,148 +317,235 @@ const MovieDetailPage = () => {
         </div>
       </div>
 
-      {/* Content Sections */}
+      {/* Content Sections with Tabs */}
       <div className="container" style={{ padding: '3rem 1rem' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '3rem' }}>
-          {/* Left Column */}
-          <div>
-            {/* Overview */}
-            {movie.overview && (
-              <motion.section
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.6 }}
-                style={{ marginBottom: '3rem' }}
+        {/* Tabs Navigation */}
+        <div style={{
+          display: 'flex',
+          gap: '1rem',
+          marginBottom: '2rem',
+          borderBottom: '1px solid var(--border-color)',
+          overflow: 'auto'
+        }}>
+          {[
+            { id: 'overview', label: 'סקירה', icon: Film },
+            { id: 'trailers', label: 'טריילרים', icon: Play },
+            { id: 'cast', label: 'שחקנים', icon: User }
+          ].map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <motion.button
+                key={tab.id}
+                onClick={() => handleTabClick(tab.id)} // שינוי כאן
+                style={{
+                  padding: '1rem 1.5rem',
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: activeTab === tab.id ? '2px solid var(--primary-color)' : '2px solid transparent',
+                  color: activeTab === tab.id ? 'var(--primary-color)' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  fontSize: '1rem',
+                  fontWeight: '500',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  minWidth: 'fit-content'
+                }}
+                whileHover={{ color: 'var(--primary-color)' }}
               >
-                <h3 style={{ fontSize: '1.5rem', marginBottom: '1rem', color: 'var(--primary-color)' }}>
-                  עלילה
-                </h3>
-                <p style={{ fontSize: '1.1rem', lineHeight: '1.7', color: 'var(--text-secondary)' }}>
-                  {movie.overview}
-                </p>
-              </motion.section>
-            )}
+                <Icon size={18} />
+                {tab.label}
+              </motion.button>
+            );
+          })}
+        </div>
 
-            {/* Cast */}
-            {movie.cast && movie.cast.length > 0 && (
-              <motion.section
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.8 }}
-                style={{ marginBottom: '3rem' }}
-              >
-                <h3 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: 'var(--primary-color)' }}>
-                  שחקנים
-                </h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '1rem' }}>
-                  {movie.cast.slice(0, 6).map((actor) => (
-                    <div key={actor.id} className="card" style={{ textAlign: 'center', padding: '1rem' }}>
-                      <img
-                        src={actor.profile_path || 'https://via.placeholder.com/150x200/1a1a1a/666666?text=No+Image'}
-                        alt={actor.name}
-                        style={{
-                          width: '100px',
-                          height: '130px',
-                          objectFit: 'cover',
-                          borderRadius: 'var(--border-radius)',
-                          marginBottom: '0.5rem',
-                        }}
-                      />
-                      <h4 style={{ fontSize: '0.9rem', marginBottom: '0.25rem' }}>{actor.name}</h4>
-                      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{actor.character}</p>
-                    </div>
-                  ))}
-                </div>
-              </motion.section>
-            )}
-          </div>
-
-          {/* Right Column */}
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 1 }}
-          >
-            <div className="card">
-              <h3 style={{ fontSize: '1.3rem', marginBottom: '1.5rem', color: 'var(--primary-color)' }}>
-                פרטי הסרט
-              </h3>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {movie.director && (
-                  <div>
-                    <strong style={{ color: 'var(--text-color)' }}>במאי:</strong>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
-                      <User size={16} color="var(--primary-color)" />
-                      <span style={{ color: 'var(--text-secondary)' }}>{movie.director}</span>
-                    </div>
-                  </div>
-                )}
-
-                {movie.budget > 0 && (
-                  <div>
-                    <strong style={{ color: 'var(--text-color)' }}>תקציב:</strong>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
-                      <DollarSign size={16} color="var(--primary-color)" />
-                      <span style={{ color: 'var(--text-secondary)' }}>{formatCurrency(movie.budget)}</span>
-                    </div>
-                  </div>
-                )}
-
-                {movie.revenue > 0 && (
-                  <div>
-                    <strong style={{ color: 'var(--text-color)' }}>הכנסות:</strong>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
-                      <DollarSign size={16} color="var(--primary-color)" />
-                      <span style={{ color: 'var(--text-secondary)' }}>{formatCurrency(movie.revenue)}</span>
-                    </div>
-                  </div>
-                )}
-
-                {movie.homepage && (
-                  <div>
-                    <strong style={{ color: 'var(--text-color)' }}>אתר רשמי:</strong>
-                    <div style={{ marginTop: '0.25rem' }}>
-                      <a
-                        href={movie.homepage}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          color: 'var(--primary-color)',
-                          textDecoration: 'none',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.5rem',
-                        }}
-                      >
-                        <Globe size={16} />
-                        בקר באתר
-                      </a>
-                    </div>
-                  </div>
-                )}
-
-                {movie.original_language && (
-                  <div>
-                    <strong style={{ color: 'var(--text-color)' }}>שפה מקורית:</strong>
-                    <span style={{ color: 'var(--text-secondary)', marginRight: '0.5rem' }}>
-                      {movie.original_language.toUpperCase()}
-                    </span>
-                  </div>
-                )}
-
-                {movie.status && (
-                  <div>
-                    <strong style={{ color: 'var(--text-color)' }}>סטטוס:</strong>
-                    <span style={{ color: 'var(--text-secondary)', marginRight: '0.5rem' }}>
-                      {movie.status}
-                    </span>
-                  </div>
+        {/* Tab Content */}
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          {activeTab === 'overview' && (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '2fr 1fr',
+              gap: '3rem'
+            }}>
+              {/* Left Column - Overview */}
+              <div>
+                {movie.overview && (
+                  <section style={{ marginBottom: '3rem' }}>
+                    <h3 style={{ fontSize: '1.5rem', marginBottom: '1rem', color: 'var(--primary-color)' }}>
+                      עלילה
+                    </h3>
+                    <p style={{ fontSize: '1.1rem', lineHeight: '1.7', color: 'var(--text-secondary)' }}>
+                      {movie.overview}
+                    </p>
+                  </section>
                 )}
               </div>
+
+              {/* Right Column - Movie Details */}
+              <div>
+                <div className="card">
+                  <h3 style={{ fontSize: '1.3rem', marginBottom: '1.5rem', color: 'var(--primary-color)' }}>
+                    פרטי הסרט
+                  </h3>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {movie.director && (
+                      <div>
+                        <strong style={{ color: 'var(--text-color)' }}>במאי:</strong>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+                          <User size={16} color="var(--primary-color)" />
+                          <span style={{ color: 'var(--text-secondary)' }}>{movie.director}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {movie.budget > 0 && (
+                      <div>
+                        <strong style={{ color: 'var(--text-color)' }}>תקציב:</strong>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+                          <DollarSign size={16} color="var(--primary-color)" />
+                          <span style={{ color: 'var(--text-secondary)' }}>{formatCurrency(movie.budget)}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {movie.revenue > 0 && (
+                      <div>
+                        <strong style={{ color: 'var(--text-color)' }}>הכנסות:</strong>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+                          <DollarSign size={16} color="var(--primary-color)" />
+                          <span style={{ color: 'var(--text-secondary)' }}>{formatCurrency(movie.revenue)}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {movie.homepage && (
+                      <div>
+                        <strong style={{ color: 'var(--text-color)' }}>אתר רשמי:</strong>
+                        <div style={{ marginTop: '0.25rem' }}>
+                          <a
+                            href={movie.homepage}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              color: 'var(--primary-color)',
+                              textDecoration: 'none',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                            }}
+                          >
+                            <Globe size={16} />
+                            בקר באתר
+                          </a>
+                        </div>
+                      </div>
+                    )}
+
+                    {movie.original_language && (
+                      <div>
+                        <strong style={{ color: 'var(--text-color)' }}>שפה מקורית:</strong>
+                        <span style={{ color: 'var(--text-secondary)', marginRight: '0.5rem' }}>
+                          {movie.original_language.toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+
+                    {movie.status && (
+                      <div>
+                        <strong style={{ color: 'var(--text-color)' }}>סטטוס:</strong>
+                        <span style={{ color: 'var(--text-secondary)', marginRight: '0.5rem' }}>
+                          {movie.status}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
-          </motion.div>
-        </div>
+          )}
+
+          {activeTab === 'trailers' && (
+            <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+              <motion.div
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                style={{ fontSize: '4rem', marginBottom: '1rem' }}
+              >
+                              </motion.div>
+          <TrailerGallery
+            movieId={movie.id}
+            movieTitle={movie.title}
+            isOpen={showTrailerGallery}
+            onClose={() => setShowTrailerGallery(false)}
+          />
+
+            </div>
+          )}
+
+          {activeTab === 'cast' && movie.cast && movie.cast.length > 0 && (
+            <section>
+              <h3 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: 'var(--primary-color)' }}>
+                שחקנים ראשיים
+              </h3>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+                gap: '1.5rem'
+              }}>
+                {movie.cast.map((actor, index) => (
+                  <motion.div
+                    key={actor.id}
+                    className="card"
+                    style={{ textAlign: 'center', padding: '1.5rem' }}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1, duration: 0.5 }}
+                    whileHover={{ y: -5 }}
+                  >
+                    <img
+                      src={actor.profile_path || 'https://via.placeholder.com/150x200/1a1a1a/666666?text=No+Image'}
+                      alt={actor.name}
+                      style={{
+                        width: '120px',
+                        height: '150px',
+                        objectFit: 'cover',
+                        borderRadius: 'var(--border-radius)',
+                        marginBottom: '1rem',
+                        border: '2px solid var(--border-color)'
+                      }}
+                    />
+                    <h4 style={{ fontSize: '1rem', marginBottom: '0.5rem', color: 'var(--text-color)' }}>
+                      {actor.name}
+                    </h4>
+                    <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                      {actor.character}
+                    </p>
+                  </motion.div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {activeTab === 'cast' && (!movie.cast || movie.cast.length === 0) && (
+            <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+              <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🎭</div>
+              <h3 style={{ marginBottom: '1rem', color: 'var(--text-color)' }}>
+                אין מידע על שחקנים
+              </h3>
+              <p style={{ color: 'var(--text-secondary)' }}>
+                לא נמצא מידע על השחקנים בסרט זה
+              </p>
+            </div>
+          )}
+
+        </motion.div>
       </div>
     </motion.div>
   );
