@@ -7,29 +7,68 @@ import MovieCard from '../components/movies/MovieCard';
 
 const FavoritesPage = () => {
   const [favorites, setFavorites] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // טעינת מועדפים מ-localStorage
   useEffect(() => {
-    const savedFavorites = localStorage.getItem('movieFavorites');
-    if (savedFavorites) {
-      setFavorites(JSON.parse(savedFavorites));
-    }
+    const loadFavorites = () => {
+      try {
+        const savedFavorites = localStorage.getItem('movieFavorites');
+        if (savedFavorites) {
+          const parsedFavorites = JSON.parse(savedFavorites);
+          setFavorites(parsedFavorites);
+        }
+      } catch (error) {
+        console.error('Error loading favorites:', error);
+        setFavorites([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadFavorites();
   }, []);
 
-  // שמירת מועדפים ל-localStorage
+  // עדכון מועדפים בזמן אמת
   useEffect(() => {
-    localStorage.setItem('movieFavorites', JSON.stringify(favorites));
-  }, [favorites]);
+    const handleStorageChange = () => {
+      const savedFavorites = localStorage.getItem('movieFavorites');
+      if (savedFavorites) {
+        setFavorites(JSON.parse(savedFavorites));
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   const handleToggleFavorite = (movie) => {
-    setFavorites(prev => prev.filter(fav => fav.id !== movie.id));
+    const updatedFavorites = favorites.filter(fav => fav.id !== movie.id);
+    setFavorites(updatedFavorites);
+    localStorage.setItem('movieFavorites', JSON.stringify(updatedFavorites));
   };
 
   const handleClearAll = () => {
     if (window.confirm('האם אתה בטוח שברצונך למחוק את כל הסרטים המועדפים?')) {
       setFavorites([]);
+      localStorage.setItem('movieFavorites', JSON.stringify([]));
     }
   };
+
+  const isFavorite = (movieId) => {
+    return favorites.some(fav => fav.id === movieId);
+  };
+
+  if (loading) {
+    return (
+      <div className="container" style={{ padding: '4rem 1rem', textAlign: 'center' }}>
+        <div className="loading">
+          <div className="spinner"></div>
+          <p>טוען מועדפים...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <motion.div 
@@ -85,8 +124,15 @@ const FavoritesPage = () => {
           // Favorites Content
           <>
             {/* Header with Clear All Button */}
-            <div className="movies-header" style={{ marginBottom: '2rem' }}>
-              <h2 className="movies-title gradient-text">
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              marginBottom: '2rem',
+              flexWrap: 'wrap',
+              gap: '1rem'
+            }}>
+              <h2 className="gradient-text" style={{ fontSize: '2rem', margin: 0 }}>
                 {favorites.length} סרטים מועדפים
               </h2>
               <motion.button
@@ -94,7 +140,11 @@ const FavoritesPage = () => {
                 className="btn btn-outline"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                style={{ color: '#f44336', borderColor: '#f44336' }}
+                style={{ 
+                  color: '#f44336', 
+                  borderColor: '#f44336',
+                  background: 'rgba(244, 67, 54, 0.1)'
+                }}
               >
                 <Trash2 size={18} />
                 מחק הכל
@@ -103,14 +153,19 @@ const FavoritesPage = () => {
 
             {/* Favorites Grid */}
             <motion.div 
-              className="movies-grid"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.3 }}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                gap: '2rem',
+                marginBottom: '3rem'
+              }}
             >
               {favorites.map((movie, index) => (
                 <MovieCard
-                  key={movie.id}
+                  key={`favorite-${movie.id}`}
                   movie={movie}
                   index={index}
                   onToggleFavorite={handleToggleFavorite}
@@ -141,6 +196,4 @@ const FavoritesPage = () => {
   );
 };
 
-export default FavoritesPage;<><h1 className="gradient-text">עמוד הסרטים</h1><p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', marginBottom: '2rem' }}>
-  כאן נבנה את מנוע החיפוש ורשת הסרטים
-</p></>
+export default FavoritesPage;
