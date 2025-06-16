@@ -1,35 +1,65 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+// src/App.jsx
+import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import Header from './components/Header';
+import HomePage from './pages/HomePage';
+import MoviesPage from './pages/MoviesPage';
+import MovieDetailPage from './pages/MovieDetailPage';
+import FavoritesPage from './pages/FavoritesPage';
+import './index.css';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [theme, setTheme] = useState('dark');
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    document.documentElement.setAttribute('data-theme', newTheme);
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <Router>
+      <div className="App">
+        <Header theme={theme} toggleTheme={toggleTheme} />
+        
+        <motion.main
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/movies" element={<MoviesPage />} />
+            <Route path="/movie/:id" element={<MovieDetailPage />} />
+            <Route path="/favorites" element={<FavoritesPage />} />
+          </Routes>
+        </motion.main>
+
+        <footer className="footer">
+          <div className="container">
+            <div className="footer-content">
+              <div className="footer-logo">
+                <div className="logo-icon">🎬</div>
+                <div>
+                  <strong>CinemaDB</strong>
+                  <p>המקום הטוב ביותר לגלות סרטים</p>
+                </div>
+              </div>
+              
+              <div className="footer-links">
+                <span>© 2025 CinemaDB</span>
+                <span>•</span>
+                <span>כל הזכויות שמורות</span>
+                <span>•</span>
+                <span>נתונים מ-TMDB</span>
+              </div>
+            </div>
+          </div>
+        </footer>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    </Router>
+  );
 }
 
-export default App
+export default App;
