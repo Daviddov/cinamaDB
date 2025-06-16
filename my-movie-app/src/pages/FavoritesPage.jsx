@@ -1,4 +1,3 @@
-
 // src/pages/FavoritesPage.jsx
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
