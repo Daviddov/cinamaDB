@@ -1,3 +1,4 @@
+// src/pages/MoviesPage.jsx
 import React from 'react';
 import { motion } from 'framer-motion';
 
