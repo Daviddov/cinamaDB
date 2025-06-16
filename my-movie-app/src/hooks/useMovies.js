@@ -1,4 +1,3 @@
-// src/hooks/useMovies.js
 import { useState, useEffect, useCallback } from 'react';
 import { tmdbService } from '../services/tmdbApi';
 

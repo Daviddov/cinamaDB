@@ -1,4 +1,3 @@
-// src/pages/MoviesPage.jsx
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, TrendingUp, X, Star, Calendar, Heart, Play, Info, Loader2 } from 'lucide-react';
@@ -16,43 +15,83 @@ const MoviesPage = () => {
   const { showToast, ToastContainer } = useToast();
   const [selectedGenre, setSelectedGenre] = useState(null);
   const [genreName, setGenreName] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [currentMode, setCurrentMode] = useState('popular'); // 'popular', 'search', 'genre'
 
   // טעינת סרטים פופולריים בהתחלה
   useEffect(() => {
     loadPopularMovies();
   }, []);
 
-  const loadPopularMovies = async () => {
+  const loadPopularMovies = async (page = 1) => {
+  if (page === 1) {
     setLoading(true);
-    try {
-      const data = await tmdbService.getPopularMovies();
+  } else {
+    setLoadingMore(true);
+  }
+  
+  try {
+    const data = await tmdbService.getPopularMovies(page);
+    
+    if (page === 1) {
       setMovies(data.movies);
-      setSearchTerm('');
-      setLocalSearchTerm('');
-    } catch (error) {
-      console.error('Error loading popular movies:', error);
-    } finally {
-      setLoading(false);
+    } else {
+      setMovies(prev => [...prev, ...data.movies]);
     }
-  };
+    
+    setTotalPages(data.totalPages);
+    setCurrentPage(page);
+    setSearchTerm('');
+    setLocalSearchTerm('');
+    setSelectedGenre(null);
+    setGenreName('');
+    setCurrentMode('popular');
+  } catch (error) {
+    console.error('Error loading popular movies:', error);
+  } finally {
+    setLoading(false);
+    setLoadingMore(false);
+  }
+};
 
-  const handleSearch = async (query) => {
-    if (!query.trim()) {
-      loadPopularMovies();
-      return;
-    }
+  const handleSearch = async (query, page = 1) => {
+  if (!query.trim()) {
+    loadPopularMovies();
+    return;
+  }
 
+  if (page === 1) {
     setLoading(true);
-    try {
-      const data = await tmdbService.searchMovies(query);
+  } else {
+    setLoadingMore(true);
+  }
+  
+  try {
+    const data = await tmdbService.searchMovies(query, page);
+    
+    if (page === 1) {
       setMovies(data.movies);
-      setSearchTerm(query);
-    } catch (error) {
-      console.error('Error searching movies:', error);
-    } finally {
-      setLoading(false);
+    } else {
+      setMovies(prev => [...prev, ...data.movies]);
     }
-  };
+    
+    setTotalPages(data.totalPages);
+    setCurrentPage(page);
+    setSearchTerm(query);
+    setSelectedGenre(null);
+    setGenreName('');
+    setCurrentMode('search');
+  } catch (error) {
+    console.error('Error searching movies:', error);
+  } finally {
+    setLoading(false);
+    setLoadingMore(false);
+  }
+};
+
+
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -83,22 +122,54 @@ const MoviesPage = () => {
     const favorites = JSON.parse(localStorage.getItem('movieFavorites') || '[]');
     return favorites.some(fav => fav.id === movieId);
   };
-  const handleLoadByGenre = async (genreId, genreName) => {
+const handleLoadByGenre = async (genreId, genreName, page = 1) => {
+  if (page === 1) {
     setLoading(true);
-    try {
-      const data = await tmdbService.getMoviesByGenre(genreId);
+  } else {
+    setLoadingMore(true);
+  }
+  
+  try {
+    const data = await tmdbService.getMoviesByGenre(genreId, page);
+    
+    if (page === 1) {
       setMovies(data.movies);
-      setSearchTerm('');
-      setLocalSearchTerm('');
-      setGenreName(genreName);
-      // showToast(`נטענו ${data.movies.length} סרטי ${genreName}`, 'success');
-    } catch (error) {
-      console.error('Error loading movies by genre:', error);
-      // showToast('שגיאה בטעינת סרטים לפי ז\'אנר', 'error');
-    } finally {
-      setLoading(false);
+    } else {
+      setMovies(prev => [...prev, ...data.movies]);
     }
-  };
+    
+    setTotalPages(data.totalPages);
+    setCurrentPage(page);
+    setSearchTerm('');
+    setLocalSearchTerm('');
+    setGenreName(genreName);
+    setCurrentMode('genre');
+  } catch (error) {
+    console.error('Error loading movies by genre:', error);
+  } finally {
+    setLoading(false);
+    setLoadingMore(false);
+  }
+};
+
+const loadMoreMovies = async () => {
+  if (currentPage >= totalPages || loadingMore) return;
+  
+  const nextPage = currentPage + 1;
+  
+  switch (currentMode) {
+    case 'search':
+      handleSearch(searchTerm, nextPage);
+      break;
+    case 'genre':
+      handleLoadByGenre(selectedGenre, genreName, nextPage);
+      break;
+    case 'popular':
+    default:
+      loadPopularMovies(nextPage);
+      break;
+  }
+};
 
     const getPageTitle = () => {
     if (searchTerm) return `תוצאות חיפוש עבור "${searchTerm}"`;
@@ -282,9 +353,9 @@ const MoviesPage = () => {
             </motion.div>
           )}
 
-          {/* Movies Grid */}
+         {/* Movies Grid */}
           {movies.length > 0 && (
-            <motion.div
+            <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.3 }}
@@ -297,13 +368,94 @@ const MoviesPage = () => {
             >
               {movies.map((movie, index) => (
                 <MovieCard
-                  key={movie.id}
+                  key={`${currentMode}-${movie.id}-${Math.floor(index / 20)}`}
                   movie={movie}
                   index={index}
                   onToggleFavorite={handleToggleFavorite}
                   isFavorite={isFavorite(movie.id)}
                 />
               ))}
+            </motion.div>
+          )}
+
+          {/* Load More Button */}
+          {movies.length > 0 && currentPage < totalPages && (
+            <motion.div
+              style={{ textAlign: 'center', marginTop: '3rem' }}
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+            >
+              <motion.button
+                onClick={loadMoreMovies}
+                disabled={loadingMore}
+                className="btn btn-outline"
+                style={{ 
+                  padding: '1rem 2rem',
+                  fontSize: '1.1rem',
+                  minWidth: '200px',
+                  background: loadingMore ? 'var(--surface-color)' : 'transparent'
+                }}
+                whileHover={{ scale: loadingMore ? 1 : 1.05 }}
+                whileTap={{ scale: loadingMore ? 1 : 0.95 }}
+              >
+                {loadingMore ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <motion.div
+                      style={{
+                        width: '18px',
+                        height: '18px',
+                        border: '2px solid var(--border-color)',
+                        borderTop: '2px solid var(--primary-color)',
+                        borderRadius: '50%'
+                      }}
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                    />
+                    טוען עוד סרטים...
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <motion.div
+                      animate={{ y: [0, -3, 0] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                    >
+                      ⬇️
+                    </motion.div>
+                    טען עוד סרטים ({currentPage}/{totalPages})
+                  </div>
+                )}
+              </motion.button>
+
+              {/* Progress Bar */}
+              <div style={{ 
+                marginTop: '1rem',
+                maxWidth: '300px',
+                margin: '1rem auto 0',
+                background: 'var(--border-color)',
+                height: '4px',
+                borderRadius: '2px',
+                overflow: 'hidden'
+              }}>
+                <motion.div
+                  style={{
+                    height: '100%',
+                    background: 'linear-gradient(90deg, var(--primary-color), var(--secondary-color))',
+                    borderRadius: '2px'
+                  }}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(currentPage / totalPages) * 100}%` }}
+                  transition={{ duration: 0.5 }}
+                />
+              </div>
+              
+              <p style={{ 
+                color: 'var(--text-secondary)', 
+                fontSize: '0.9rem', 
+                marginTop: '0.5rem' 
+              }}>
+                עמוד {currentPage} מתוך {totalPages} • {movies.length} סרטים נטענו
+              </p>
             </motion.div>
           )}
         </div>
