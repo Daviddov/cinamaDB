@@ -82,7 +82,6 @@ const SearchBar = ({ onSearch, searchTerm, isLoading, onClear }) => {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => {
-              // יוכל להוסיף פונקציונליות של חיפוש אקראי
               const randomTerms = ['action', 'comedy', 'drama', 'thriller', 'adventure'];
               const randomTerm = randomTerms[Math.floor(Math.random() * randomTerms.length)];
               setLocalSearchTerm(randomTerm);
@@ -90,7 +89,7 @@ const SearchBar = ({ onSearch, searchTerm, isLoading, onClear }) => {
             }}
           >
             <Sparkles size={18} />
-            הפתעה אקראית
+            סרט אקראי
           </motion.button>
         </div>
       </form>

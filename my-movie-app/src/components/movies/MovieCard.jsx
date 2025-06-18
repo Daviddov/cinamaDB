@@ -4,7 +4,6 @@ import { Star, Calendar, Heart, Play, Info } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import TrailerModal from './TrailerModal';
 
-// Movie Card Component
 const MovieCard = ({ movie, index, onToggleFavorite, isFavorite }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);

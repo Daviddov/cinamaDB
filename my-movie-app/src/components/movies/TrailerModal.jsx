@@ -1,4 +1,3 @@
-// src/components/movies/TrailerModal.jsx
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Play, AlertCircle, Loader2, Maximize2 } from 'lucide-react';

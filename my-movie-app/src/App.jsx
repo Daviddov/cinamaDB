@@ -1,8 +1,6 @@
-// src/App.jsx
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import Header from './components/Header';
 import HomePage from './pages/HomePage';
 import MoviesPage from './pages/MoviesPage';
 import MovieDetailPage from './pages/MovieDetailPage';

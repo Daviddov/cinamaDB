@@ -1,4 +1,3 @@
-// src/components/movies/TrailerGallery.jsx
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, X, ExternalLink, Clock, Calendar, Loader2, AlertCircle, Maximize2 } from 'lucide-react';
